@@ -1,0 +1,42 @@
+version: '2'
+services:
+  influxdb:
+    image: influxdb_image:latest
+    container_name: influxdb
+    restart: always
+    build:
+      context: ./influxdb
+    ports:
+      - 8086:8086
+      - 8088:8088
+    environment:
+      - INFLUXDB_ADMIN_USER_PASSWORD=pdgcloud_devopssec_pwd
+      - INFLUXDB_ADMIN_USER_TOKEN=pdgcloud_devopssec_token
+    volumes:
+      - influxdb:/bitnami/influxdb
+  telegraf:
+    # later versions of telegraf cannot be run as root.
+    # see: https://www.influxdata.com/blog/docker-run-telegraf-as-non-root/
+    user: root
+    image: telegraf_image:latest
+    container_name: telegraf
+    restart: always
+    build:
+      context: ./telegraf
+    links:
+      - influxdb
+    volumes:
+      # Mount for telegraf config
+      - ./telegraf/mytelegraf.conf:/etc/telegraf/telegraf.conf
+      # Mount for Docker API access
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - DOCKER_INFLUXDB_INIT_BUCKET=DEVOPSSEC_INFLUXDATA
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=pdgcloud_devopssec_token
+      - DOCKER_INFLUXDB_INIT_ORG=NCIRL_PGDCLOUD_2022
+    depends_on:
+      - influxdb
+
+volumes:
+    influxdb:
+        driver: local
